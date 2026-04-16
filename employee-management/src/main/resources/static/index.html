@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LUCA Employee Management</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial;
+            margin: 0;
+            background: #0a0a0a;
+            color: #fff;
+        }
+
+        header {
+            background: #000;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid #222;
+        }
+
+        header h1 {
+            letter-spacing: 10px;
+            font-weight: 300;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: auto;
+            padding: 30px;
+        }
+
+        .card {
+            background: #111;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            border: 1px solid #222;
+        }
+
+        input {
+            padding: 12px;
+            margin: 8px;
+            width: 200px;
+            border: none;
+            border-radius: 4px;
+            background: #1a1a1a;
+            color: white;
+        }
+
+        .search-box {
+            width: 300px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background: #00c3ff;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background: #00a8dd;
+        }
+
+        .update-btn {
+            background: #ffaa00;
+        }
+
+        .delete-btn {
+            background: #ff4d4d;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px;
+            border-bottom: 1px solid #222;
+            text-align: center;
+        }
+
+        tr:hover {
+            background: #1a1a1a;
+        }
+
+        .title {
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .error {
+            color: #ff4d4d;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>LUCA</h1>
+    <p>Employee Management System</p>
+</header>
+
+<div class="container">
+
+    <!-- FORM -->
+    <div class="card">
+        <div class="title">Add / Update Employee</div>
+
+        <input type="hidden" id="empId">
+
+        <input type="text" id="name" placeholder="Name">
+        <input type="email" id="email" placeholder="Email">
+        <input type="text" id="department" placeholder="Department">
+        <input type="number" id="salary" placeholder="Salary">
+        <br>
+
+        <button onclick="saveEmployee()" id="saveBtn">Add Employee</button>
+
+        <div id="errorBox" class="error"></div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="card">
+        <div class="title">Employee List</div>
+
+        <input type="text" id="searchInput" class="search-box"
+               placeholder="Search by name..." onkeyup="searchEmployees()">
+
+        <table id="employeeTable"></table>
+    </div>
+
+</div>
+
+<script>
+    const API = "http://localhost:8080/api/employees";
+
+    // Render Table
+    function renderTable(data) {
+        let table = document.getElementById("employeeTable");
+
+        table.innerHTML = `
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Department</th>
+                <th>Salary</th>
+                <th>Actions</th>
+            </tr>
+        `;
+
+        if (data.length === 0) {
+            table.innerHTML += `<tr><td colspan="6">No employees found</td></tr>`;
+            return;
+        }
+
+        data.forEach(emp => {
+            table.innerHTML += `
+                <tr>
+                    <td>${emp.id}</td>
+                    <td>${emp.name}</td>
+                    <td>${emp.email}</td>
+                    <td>${emp.department}</td>
+                    <td>${emp.salary}</td>
+                    <td>
+                        <button class="update-btn" onclick='editEmployee(${JSON.stringify(emp)})'>Edit</button>
+                        <button class="delete-btn" onclick="deleteEmployee(${emp.id})">Delete</button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    // Load All Employees
+    function loadEmployees() {
+        fetch(API)
+            .then(res => res.json())
+            .then(data => renderTable(data));
+    }
+
+    // Save or Update
+    function saveEmployee() {
+        const id = document.getElementById("empId").value;
+
+        const employee = {
+            name: document.getElementById("name").value,
+            email: document.getElementById("email").value,
+            department: document.getElementById("department").value,
+            salary: document.getElementById("salary").value
+        };
+
+        const method = id ? "PUT" : "POST";
+        const url = id ? API + "/" + id : API;
+
+        fetch(url, {
+            method: method,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(employee)
+        })
+        .then(res => {
+            if (!res.ok) return res.json().then(err => { throw err; });
+            return res.json();
+        })
+        .then(() => {
+            resetForm();
+            loadEmployees();
+            document.getElementById("errorBox").innerHTML = "";
+        })
+        .catch(err => {
+            if (err.errors) {
+                let msg = "";
+                for (let key in err.errors) {
+                    msg += err.errors[key] + "<br>";
+                }
+                document.getElementById("errorBox").innerHTML = msg;
+            } else {
+                document.getElementById("errorBox").innerHTML = "Something went wrong";
+            }
+        });
+    }
+
+    // Edit
+    function editEmployee(emp) {
+        document.getElementById("empId").value = emp.id;
+        document.getElementById("name").value = emp.name;
+        document.getElementById("email").value = emp.email;
+        document.getElementById("department").value = emp.department;
+        document.getElementById("salary").value = emp.salary;
+
+        document.getElementById("saveBtn").innerText = "Update Employee";
+    }
+
+    // Delete
+    function deleteEmployee(id) {
+        fetch(API + "/" + id, {
+            method: "DELETE"
+        }).then(() => loadEmployees());
+    }
+
+    // Reset Form
+    function resetForm() {
+        document.getElementById("empId").value = "";
+        document.getElementById("name").value = "";
+        document.getElementById("email").value = "";
+        document.getElementById("department").value = "";
+        document.getElementById("salary").value = "";
+        document.getElementById("saveBtn").innerText = "Add Employee";
+    }
+
+    // Search
+    function searchEmployees() {
+        const query = document.getElementById("searchInput").value;
+
+        if (query === "") {
+            loadEmployees();
+            return;
+        }
+
+        fetch(API + "/search?name=" + query)
+            .then(res => {
+                if (!res.ok) throw new Error();
+                return res.json();
+            })
+            .then(data => renderTable(data))
+            .catch(() => renderTable([]));
+    }
+
+    loadEmployees();
+</script>
+
+</body>
+</html>
