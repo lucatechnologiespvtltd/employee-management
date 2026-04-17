@@ -2,7 +2,9 @@ FROM eclipse-temurin:17-jdk
 
 WORKDIR /app
 
-COPY . .
+COPY employee-management ./employee-management
+
+WORKDIR /app/employee-management
 
 RUN chmod +x mvnw
 RUN ./mvnw clean package -DskipTests
